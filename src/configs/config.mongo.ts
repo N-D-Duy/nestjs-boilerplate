@@ -5,7 +5,7 @@ const dev = {
         uri: process.env.MONGOOSE_URL,
     },
     app: {
-        port: process.env.PORT || 3000
+        port: process.env.DEV_PORT || 3000
     }
 };
 
@@ -14,7 +14,7 @@ const proc = {
         uri: process.env.MONGOOSE_URL,
     },
     app: {
-        port: process.env.PORT
+        port: process.env.PROD_PORT
     }
 };
 

@@ -41,21 +41,25 @@ export class AuthService {
       logger.error('User key not found');
       throw new UnauthorizedException('User key not found');
     }
-    const payload = { username: user.username, sub: user._id };
+    const payload = { email: user.email, sub: user._id };
 
+    const tokens = await this.reCreateTokenPair(payload, key);
+
+    return {
+      access_token: tokens.accessToken,
+      refresh_token: tokens.refreshToken,
+    };
+  }
+
+  async reCreateTokenPair(payload: object, key: KeyDocument): Promise<{ accessToken: string, refreshToken: string }> {
     const tokens = await this.createTokenPair(payload, key.publicKey, key.privateKey);
-
     if (!tokens) {
       throw new UnauthorizedException('Error creating tokens, please try again (null)');
     }
     //delete old refresh tokens and save new one
     key.refreshToken = [tokens.refreshToken];
     await key.save();
-
-    return {
-      access_token: tokens.accessToken,
-      refresh_token: tokens.refreshToken,
-    };
+    return tokens;
   }
 
   async signup(createUserDto: CreateUserDto) {
@@ -76,7 +80,7 @@ export class AuthService {
       if (!publicKeyString) {
         throw new UnauthorizedException('Error saving public key, please try again');
       }
-      const tokens = await this.createTokenPair({ username: newUser.username, sub: newUser._id }, publicKey, privateKey);
+      const tokens = await this.createTokenPair({ email: newUser.email, sub: newUser._id }, publicKey, privateKey);
       if (!tokens) {
         throw new UnauthorizedException('Error creating tokens, please try again (null)');
       }
@@ -120,15 +124,21 @@ export class AuthService {
   }
 
 
-  async createTokenPair(payload: object, publicKey: string, privateKey: string) {
+  async createTokenPair(payload: object, publicKey: string, privateKey: string): Promise<{ accessToken: string, refreshToken: string }> {
     try {
-      const accessToken = this.jwtService.sign(payload, { secret: privateKey, algorithm: 'RS256', expiresIn: '15m' });
-      const refreshToken = this.jwtService.sign(payload, { secret: privateKey, algorithm: 'RS256', expiresIn: '7d' });
+      
+      const accessToken = await this.jwtService.signAsync(payload, { secret: privateKey, algorithm: 'RS256', expiresIn: '15m' });
+      const refreshToken = await this.jwtService.signAsync(payload, { secret: privateKey, algorithm: 'RS256', expiresIn: '7d' });
+
+      //test verify
+      const decode = this.jwtService.verify(accessToken, {publicKey: publicKey});
+      console.log('decode', decode);
+  
       return { accessToken, refreshToken };
     }
     catch (e) {
       console.error('JWT Sign Error:', e);
-      throw new UnauthorizedException('Error creating tokens, please try again (craete)', e);
+      throw new UnauthorizedException('Error creating tokens, please try again (create)', e);
     }
   }
 
@@ -144,8 +154,8 @@ export class AuthService {
         throw new UnauthorizedException('User key not found');
       }
       const newPayload = { username: user.username, sub: user._id };
-      //generate new token pair
-      const tokens = await this.createTokenPair(newPayload, key.publicKey, key.privateKey);
+      //create new token pair and save refresh token
+      const tokens = await this.reCreateTokenPair(newPayload, key);
       return {
         access_token: tokens.accessToken,
         refresh_token: tokens.refreshToken,
@@ -154,6 +164,4 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
-
-
 }
