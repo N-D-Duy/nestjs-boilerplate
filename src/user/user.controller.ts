@@ -10,7 +10,7 @@ import { Permission } from "src/shared/helpers/permissions.enum";
 @ApiBearerAuth()
 export class UserController {
     constructor(private readonly userService: UserService) {}
-    @Permissions(Permission.SYSTEM_ADMIN)
+    @Permissions(Permission.READ)
     @Get()
     getUsers(): Promise<User[]> {
         return this.userService.getUsers();

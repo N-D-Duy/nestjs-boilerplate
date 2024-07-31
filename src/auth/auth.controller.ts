@@ -4,7 +4,7 @@ import { LocalAuthGuard } from '../common/guards/local-auth.guard';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CreateUserDto } from 'src/user/dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { Public } from 'src/common/guards/permissions/permission.decorator.guard';
 
@@ -18,6 +18,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Login' })
   @ApiResponse({ status: 200, description: 'Successful login', type: LoginResponseDto })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiBody({ description: 'email and password', type: LoginDto })
   @Post('login')
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
@@ -25,6 +26,7 @@ export class AuthController {
 
   @Public()
   @Post('signup')
+  @ApiBody({type: CreateUserDto})
   async signup(@Body() createUserDto: CreateUserDto) {
     return this.authService.signup(createUserDto);
   }
@@ -35,13 +37,13 @@ export class AuthController {
     return req.user;
   }
 
+  @Public()
+  @ApiOperation({ summary: 'Refresh Token' })
+  @ApiResponse({ status: 200, description: 'New tokens', type: LoginResponseDto})
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiBody({ description: 'Refresh token', schema: { type: 'object', properties: { refreshToken: { type: 'string' } }, required: ['refreshToken'] } })
   @Post('refresh')
-  async refresh(@Body('refresh_token') refreshToken: string) {
-    return this.authService.refreshToken(refreshToken);
+  async refresh(@Body('refreshToken') refreshToken: string) {
+    return await this.authService.refreshToken(refreshToken);
   }
-
-  // @Get('key/:uid')
-  // async getKey(@Param('uid') uid: String): Promise<KeyDocument> {
-  //   return this.authService.findKey(uid);
-  // }
 }

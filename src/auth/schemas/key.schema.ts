@@ -22,7 +22,7 @@ export class Key {
   privateKey: string
 
   @Prop({default: []})
-  refreshToken: string[]
+  refreshTokens: string[]
   
 }
 

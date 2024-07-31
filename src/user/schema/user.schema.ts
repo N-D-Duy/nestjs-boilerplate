@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { Role } from 'src/shared/helpers/role.enum';
+import { Status } from 'src/shared/helpers/status.enum';
 
 export type UserDocument = HydratedDocument<User>;
 
@@ -15,7 +16,7 @@ export class User {
     @Prop({ type: String, default: Role.USER, enum: Object.values(Role) })
     role: string;
 
-    @Prop({ enum: ['actived', 'inactive'], default: 'inactive' })
+    @Prop({ type: String, default: 'inactive', enum: Object.values(Status) })
     status: string;
 }
 

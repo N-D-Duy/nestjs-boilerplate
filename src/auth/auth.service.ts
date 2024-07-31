@@ -57,7 +57,7 @@ export class AuthService {
       throw new UnauthorizedException('Error creating tokens, please try again (null)');
     }
     //delete old refresh tokens and save new one
-    key.refreshToken = [tokens.refreshToken];
+    key.refreshTokens.push(tokens.refreshToken);
     await key.save();
     return tokens;
   }
@@ -91,9 +91,8 @@ export class AuthService {
         throw new UnauthorizedException('User key not found');
       }
 
-      key.refreshToken.push(refreshToken);
+      key.refreshTokens.push(refreshToken);
       await key.save();
-
 
       return {
         code: 200,
@@ -142,26 +141,48 @@ export class AuthService {
     }
   }
 
-  async refreshToken(refreshToken: string) {
+  async refreshToken(refreshToken: string): Promise<LoginResponseDto> {
     try {
-      const payload = this.jwtService.verify(refreshToken);
-      const user = await this.userService.getUserById(payload.sub);
-      if (!user) {
-        throw new UnauthorizedException('Invalid token');
+      // Lấy thông tin payload từ refresh token
+      const payload = this.jwtService.decode(refreshToken);
+      if (!payload) {
+        throw new UnauthorizedException('Invalid token, decode not found');
       }
-      const key = await this.keyModel.findOne({ userId: user._id }).exec();
+      // Lấy public/private key của người dùng
+      const key = await this.keyModel.findOne({ userId: payload.sub }).exec();
       if (!key) {
         throw new UnauthorizedException('User key not found');
       }
-      const newPayload = { username: user.username, sub: user._id };
-      //create new token pair and save refresh token
+
+      // Kiểm tra xem refresh token có còn hợp lệ hay không
+      if (!key.refreshTokens.includes(refreshToken)) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      //verify token
+      const verify = this.jwtService.verify(refreshToken, { publicKey: key.publicKey, ignoreExpiration: false });
+      if(!verify) {
+        throw new UnauthorizedException('Invalid refresh token or expired');
+      }
+  
+      // Tạo payload mới cho token mới
+      const newPayload = { email: payload.email, sub: payload._id };
+  
+      // Tạo cặp token mới
       const tokens = await this.reCreateTokenPair(newPayload, key);
+
+      // Xóa refresh token cũ và lưu refresh token mới
+      key.refreshTokens = key.refreshTokens.filter(token => token !== refreshToken);
+      key.refreshTokens.push(tokens.refreshToken);
+      await key.save();
+  
       return {
         access_token: tokens.accessToken,
         refresh_token: tokens.refreshToken,
       };
     } catch (e) {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new UnauthorizedException('Invalid or expired refresh token');
     }
   }
+  
 }

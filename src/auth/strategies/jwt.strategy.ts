@@ -20,7 +20,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      ignoreExpiration: true,
+      ignoreExpiration: false,
       secretOrKeyProvider: async (_requestType: any, token: string, done) => {
         // check if the token is valid (access token), pass it to the validate method as well
         const payload: any = this.authService.jwtService.decode(token);
